@@ -1,0 +1,33 @@
+{
+  "name": "nodejs-test",
+  "version": "1.0.0",
+  "description": "Тестовое задание nodejs/express",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/positron1510/nodejs-test.git"
+  },
+  "keywords": [
+    "nodejs",
+    "express",
+    "rest"
+  ],
+  "author": "Maxim Yanko",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/positron1510/nodejs-test/issues"
+  },
+  "homepage": "https://github.com/positron1510/nodejs-test#readme",
+  "dependencies": {
+    "express": "^4.17.1",
+    "mysql2": "^2.1.0",
+    "sequelize": "^5.21.4"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.2"
+  }
+}
