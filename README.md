@@ -31,7 +31,7 @@ data
 
 3. Редактирование PUT
 
-/api/edit/<идентификатор книги>
+/api/edit/<int:book_id>
 
 PUT данные одно поле data в формате json. Пример:
 
