@@ -1,7 +1,8 @@
-const { Sequelize, Model } = require('sequelize');
+const {Sequelize, Model} = require('sequelize');
 const sequelize = require('../utils/database');
 const Author = require('./author');
 const Op = Sequelize.Op;
+const Cache = require('../utils/cache');
 
 class Book extends Model {
     /**
@@ -31,6 +32,22 @@ class Book extends Model {
         const offset = req.query.offset && !isNaN(req.query.offset) ? parseInt(req.query.offset) : 0;
         const limit = req.query.limit && !isNaN(req.query.limit) ? parseInt(req.query.limit) : 10;
 
+        // GET параметры сортировки sort_field, order, подстроки поиска search
+        const properties = ['name', 'picture', 'release_date', 'description', 'authors', 'id'];
+        const orders = ['asc', 'desc'];
+        const sort_field = req.query.sort_field && properties.find(item => item === req.query.sort_field.toLowerCase()) ? req.query.sort_field.toLowerCase() : 'release_date';
+        const order = req.query.order && orders.find(item => item === req.query.order.toLowerCase()) ? req.query.order : 'asc';
+        const search = req.query.search ? req.query.search : '';
+
+        // Формируем из get-параметров хэш-ключ для редиса, затем проверяем есть ли что в редисе по данному ключу
+        const redisHash = `offset=${offset}&limit=${limit}&sort_field=${sort_field}&order=${order}&search=${search}`;
+        const data = await Cache.get(redisHash);
+
+        // Если есть что то в кэше, достаем и возвращаем
+        if (data) {
+            return JSON.parse(data);
+        }
+
         // начинаем формировать строку запроса
         let query = {
             include: [{
@@ -41,12 +58,6 @@ class Book extends Model {
             limit: limit,
         };
 
-        // GET параметры сортировки sort_field, order
-        const properties = ['name', 'picture', 'release_date', 'description', 'authors', 'id'];
-        const orders = ['asc', 'desc'];
-        const sort_field = req.query.sort_field && properties.find(item => item === req.query.sort_field.toLowerCase()) ? req.query.sort_field.toLowerCase() : 'release_date';
-        const order = req.query.order && orders.find(item => item === req.query.order.toLowerCase()) ? req.query.order : 'asc';
-
         // добавляем к строке запроса сортировку
         if (sort_field === 'authors') {
             query.order = [[ Author, "name", order]]
@@ -54,8 +65,10 @@ class Book extends Model {
             query.order = [[sort_field, order]];
         }
 
+        let books;
+
         // GET параметр поиск (если есть)
-        if (req.query.search) {
+        if (search) {
             query.where = {
                 [Op.or]: [
                     {
@@ -76,8 +89,9 @@ class Book extends Model {
                 ]
             };
 
-            let books = await Book.findAll(query);
+            books = await Book.findAll(query);
             delete query.where;
+
             query.include[0].where = {
                 [Op.or]: [
                     {
@@ -87,6 +101,7 @@ class Book extends Model {
                     },
                 ]
             };
+
             let authors = await Book.findAll(query);
 
             let book;
@@ -104,10 +119,16 @@ class Book extends Model {
                 books.push(book[0]);
             }
 
+            // записываем в кэш
+            Cache.set(redisHash, JSON.stringify(books));
             return books;
         }
 
-        return await Book.findAll(query);
+        books = await Book.findAll(query);
+        // записываем в кэш
+        Cache.set(redisHash, JSON.stringify(books));
+
+        return books;
     }
 
     /**
@@ -133,7 +154,7 @@ class Book extends Model {
             if (data.authors) {
                 for (let item of data.authors) {
                     if (item['old_name'] && item['new_name']) {
-                        Author.update({
+                        await Author.update({
                             name: item['new_name'],
                         }, {
                             where: {
