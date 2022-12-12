@@ -24,7 +24,7 @@
   },
   "homepage": "https://github.com/positron1510/nodejs-test#readme",
   "dependencies": {
-    "express": "^4.17.1",
+    "express": "^4.17.3",
     "mysql2": "^2.1.0",
     "redis": "^3.0.2",
     "sequelize": "^5.21.4"
